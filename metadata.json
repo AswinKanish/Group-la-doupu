@@ -1,0 +1,6 @@
+{
+  "name": "Group la Doopu",
+  "description": "Group la Doopu - A fast, real-time multiplayer imposter deduction game for up to 25 players with interactive 3D visuals, animated characters, and custom game settings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
