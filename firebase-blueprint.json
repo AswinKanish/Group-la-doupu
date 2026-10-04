@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Active game room state for real-time multiplayer",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 10,
+          "pattern": "^[A-Z0-9]+$",
+          "description": "Unique room join code"
+        },
+        "hostId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique ID of room host"
+        },
+        "phase": {
+          "type": "string",
+          "enum": ["lobby", "host_order", "role_reveal", "clue_giving", "round_prompt", "voting", "imposter_guess", "verdict"],
+          "description": "Current game phase"
+        },
+        "playerCount": {
+          "type": "integer",
+          "description": "Number of players currently connected"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Room creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Room last updated timestamp"
+        }
+      },
+      "required": ["roomCode", "hostId", "phase", "playerCount"]
+    },
+    "MatchRecord": {
+      "title": "MatchRecord",
+      "description": "Completed match summary and verdict record",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Room code where match was played"
+        },
+        "winner": {
+          "type": "string",
+          "enum": ["crew", "imposter"],
+          "description": "Winning side of the match"
+        },
+        "secretWord": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Secret word of the round"
+        },
+        "imposterNames": {
+          "type": "array",
+          "description": "Names of imposters in the game"
+        },
+        "playerCount": {
+          "type": "integer",
+          "description": "Total number of players in the match"
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Total rounds played"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the match concluded"
+        }
+      },
+      "required": ["roomCode", "winner", "secretWord", "playerCount", "roundNumber"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Player game stats and lifetime score",
+      "type": "object",
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Player identifier"
+        },
+        "playerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "description": "Display name of player"
+        },
+        "gamesPlayed": {
+          "type": "integer",
+          "description": "Lifetime games played"
+        },
+        "wins": {
+          "type": "integer",
+          "description": "Lifetime total wins"
+        },
+        "imposterWins": {
+          "type": "integer",
+          "description": "Lifetime imposter wins"
+        },
+        "detectiveWins": {
+          "type": "integer",
+          "description": "Lifetime detective/crew wins"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["playerId", "playerName", "gamesPlayed", "wins"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Active multiplayer rooms"
+    },
+    "/matches/{matchId}": {
+      "schema": "MatchRecord",
+      "description": "Game match history and statistics"
+    },
+    "/leaderboard/{playerId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Player leaderboard rankings and records"
+    },
+    "/test/{testId}": {
+      "schema": {
+        "$ref": "#/entities/Room"
+      },
+      "description": "Health check and connection verification"
+    }
+  }
+}

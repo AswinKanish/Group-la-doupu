@@ -14,6 +14,7 @@ import { VerdictView } from './components/VerdictView';
 import { ThreeBackground } from './components/ThreeBackground';
 import { RulesModal } from './components/RulesModal';
 import { DeployGuideModal } from './components/DeployGuideModal';
+import { CloudDatabaseModal } from './components/CloudDatabaseModal';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -22,6 +23,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isDeployGuideOpen, setIsDeployGuideOpen] = useState(false);
+  const [isCloudDbOpen, setIsCloudDbOpen] = useState(false);
   const [initialRoomCode, setInitialRoomCode] = useState('');
 
   // Check URL params for invite link (?room=CODE)
@@ -189,6 +191,7 @@ export default function App() {
         isHost={isHost}
         networkMode={networkMode}
         onOpenDeployGuide={() => setIsDeployGuideOpen(true)}
+        onOpenCloudDb={() => setIsCloudDbOpen(true)}
         onOpenRules={() => setIsRulesOpen(true)}
         connectionStatus={connectionStatus}
       />
@@ -297,6 +300,12 @@ export default function App() {
       <DeployGuideModal
         isOpen={isDeployGuideOpen}
         onClose={() => setIsDeployGuideOpen(false)}
+      />
+
+      {/* Cloud Database (Supabase & Firebase) Modal */}
+      <CloudDatabaseModal
+        isOpen={isCloudDbOpen}
+        onClose={() => setIsCloudDbOpen(false)}
       />
     </div>
   );

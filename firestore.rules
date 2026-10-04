@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Connection health check document
+    match /test/{testId} {
+      allow read: if isValidId(testId);
+      allow write: if false;
+    }
+
+    // Active multiplayer rooms
+    match /rooms/{roomId} {
+      allow read: if isValidId(roomId);
+      allow create: if isValidId(roomId)
+        && incoming().roomCode is string
+        && incoming().roomCode.size() >= 3
+        && incoming().roomCode.size() <= 12
+        && incoming().hostId is string
+        && incoming().hostId.size() <= 64
+        && incoming().phase is string
+        && incoming().playerCount is int;
+      allow update: if isValidId(roomId)
+        && incoming().roomCode == existing().roomCode
+        && incoming().hostId == existing().hostId
+        && incoming().phase is string
+        && incoming().playerCount is int;
+      allow delete: if isValidId(roomId);
+    }
+
+    // Match history records (immutable archive)
+    match /matches/{matchId} {
+      allow read: if isValidId(matchId);
+      allow create: if isValidId(matchId)
+        && incoming().roomCode is string
+        && incoming().roomCode.size() <= 12
+        && incoming().winner in ['crew', 'imposter']
+        && incoming().secretWord is string
+        && incoming().secretWord.size() <= 100
+        && incoming().playerCount is int
+        && incoming().roundNumber is int;
+      allow update, delete: if false;
+    }
+
+    // Player leaderboard stats
+    match /leaderboard/{playerId} {
+      allow read: if isValidId(playerId);
+      allow create: if isValidId(playerId)
+        && incoming().playerId == playerId
+        && incoming().playerName is string
+        && incoming().playerName.size() >= 1
+        && incoming().playerName.size() <= 30
+        && incoming().gamesPlayed is int
+        && incoming().wins is int;
+      allow update: if isValidId(playerId)
+        && incoming().playerId == existing().playerId
+        && incoming().playerName is string
+        && incoming().playerName.size() >= 1
+        && incoming().playerName.size() <= 30
+        && incoming().gamesPlayed >= existing().gamesPlayed
+        && incoming().wins >= existing().wins;
+      allow delete: if false;
+    }
+  }
+}

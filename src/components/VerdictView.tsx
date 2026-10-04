@@ -4,6 +4,7 @@ import { Trophy, ArrowRight, RotateCcw, AlertOctagon, CheckCircle2, XCircle, Shi
 import { GameState } from '../types/game';
 import { AnimatedAvatar } from './AnimatedAvatar';
 import { sound } from '../utils/sound';
+import { saveMatchToFirestore, updatePlayerStatsInFirestore } from '../lib/firebase';
 
 interface VerdictViewProps {
   gameState: GameState;
@@ -42,7 +43,25 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
         origin: { y: 0.6 },
       });
     }
-  }, [isCrewWinner]);
+
+    // Persist match to Cloud Database (Host saves match to avoid duplicate records)
+    if (isHost && verdict) {
+      saveMatchToFirestore({
+        roomCode: gameState.roomCode,
+        winner: verdict.winner,
+        secretWord: verdict.secretWord,
+        imposterNames: verdict.imposters.map((i) => i.name),
+        playerCount: gameState.players.length,
+        roundNumber: gameState.roundNumber,
+      });
+    }
+
+    // Update player lifetime stats in Cloud Database
+    const me = gameState.players.find((p) => p.id === myPlayerId);
+    if (me && verdict) {
+      updatePlayerStatsInFirestore(myPlayerId, me.name, didIWin, isImposter);
+    }
+  }, [isCrewWinner, isHost, verdict, myPlayerId, gameState.roomCode, gameState.roundNumber, gameState.players, didIWin, isImposter]);
 
   // Sort players by score
   const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);

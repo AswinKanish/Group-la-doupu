@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Copy, Check, Radio, HelpCircle, UploadCloud } from 'lucide-react';
+import { Volume2, VolumeX, Copy, Check, Radio, HelpCircle, UploadCloud, Database } from 'lucide-react';
 import { sound } from '../utils/sound';
 import { NetworkMode } from '../types/game';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   networkMode: NetworkMode;
   onToggleNetworkMode?: () => void;
   onOpenDeployGuide: () => void;
+  onOpenCloudDb: () => void;
   onOpenRules: () => void;
   connectionStatus: 'disconnected' | 'connecting' | 'connected';
 }
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   networkMode,
   onToggleNetworkMode,
   onOpenDeployGuide,
+  onOpenCloudDb,
   onOpenRules,
   connectionStatus,
 }) => {
@@ -118,6 +120,17 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="capitalize">{networkMode === 'websocket' ? 'WS' : 'P2P'}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
           </div>
+
+          {/* Cloud Database (Supabase / Firebase) */}
+          <button
+            id="open-cloud-db-btn"
+            onClick={onOpenCloudDb}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium transition-all"
+            title="Cloud Database (Supabase & Firebase)"
+          >
+            <Database className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">Cloud DB</span>
+          </button>
 
           {/* Vercel & Netlify Deploy Guide Button */}
           <button
