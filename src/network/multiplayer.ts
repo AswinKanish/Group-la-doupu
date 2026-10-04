@@ -665,8 +665,12 @@ class MultiplayerClient {
   }
 
   // ==========================================
-  // CLEANUP
+  // CLEANUP / DISCONNECT
   // ==========================================
+  public disconnect() {
+    this.cleanup();
+  }
+
   public cleanup() {
     if (this.ws) {
       try {

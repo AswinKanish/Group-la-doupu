@@ -37,7 +37,7 @@ export const VotingView: React.FC<VotingViewProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase font-bold tracking-wider text-rose-500 flex items-center gap-1">
               <ShieldAlert className="w-3.5 h-3.5" />
-              Phase: Voting Out the Doopu
+              Phase: Voting Out the Doupu
             </span>
             <span className="text-xs text-slate-500">•</span>
             <span className="text-xs text-slate-400 font-mono">
@@ -56,7 +56,8 @@ export const VotingView: React.FC<VotingViewProps> = ({
         {activePlayers.map((player) => {
           const isMe = player.id === myPlayerId;
           const isSelectedByMe = myVote === player.id;
-          const playerClue = gameState.clues.find((c) => c.playerId === player.id)?.text;
+          const playerClueObj = gameState.clues.find((c) => c.playerId === player.id);
+          const playerClue = playerClueObj?.clue || playerClueObj?.text;
           const hasThisPlayerVoted = gameState.votes[player.id] !== undefined;
 
           return (

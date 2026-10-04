@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, ArrowRight, RotateCcw, AlertOctagon, CheckCircle2, XCircle, Shield } from 'lucide-react';
+import { Trophy, ArrowRight, RotateCcw, AlertOctagon, CheckCircle2, XCircle, Shield, Target } from 'lucide-react';
 import { GameState } from '../types/game';
 import { AnimatedAvatar } from './AnimatedAvatar';
 import { sound } from '../utils/sound';
@@ -85,11 +85,11 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
               : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
           }`}
         >
-          {isCrewWinner ? 'CREW VICTORY' : 'DOOPU (IMPOSTER) VICTORY'}
+          {isCrewWinner ? 'CREW VICTORY' : 'DOUPU (IMPOSTER) VICTORY'}
         </span>
 
         <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">
-          {isCrewWinner ? 'The Crew Prevails!' : 'The Doopu Escaped!'}
+          {isCrewWinner ? 'The Crew Prevails!' : 'The Doupu Escaped!'}
         </h2>
 
         <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto mb-5 leading-relaxed">
@@ -115,7 +115,7 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
           {/* Imposter(s) */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-black/60 border border-slate-800">
             <span className="text-[10px] uppercase tracking-wider text-rose-400 font-bold block mb-1">
-              The Doopu ({verdict && verdict.imposters.length} Imposter{verdict && verdict.imposters.length > 1 ? 's' : ''})
+              The Doupu ({verdict && verdict.imposters.length} Imposter{verdict && verdict.imposters.length > 1 ? 's' : ''})
             </span>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {verdict?.imposters.map((imp) => {
@@ -142,8 +142,8 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
           </div>
         </div>
 
-        {/* You won/lost indicator */}
-        <div className="mt-5">
+        {/* You won/lost indicator & detective bonus */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
               didIWin
@@ -151,8 +151,16 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
                 : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
             }`}
           >
-            {didIWin ? '✨ You Won This Round!' : '💔 Better Luck Next Round!'}
+            {didIWin ? '✨ You Won This Round!' : '💔 Round Lost'}
           </span>
+
+          {/* Show detective bonus badge if user correctly voted for the imposter */}
+          {verdict?.correctVoters?.some((v) => v.id === myPlayerId) && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
+              <Target className="w-3.5 h-3.5" />
+              <span>Sharp Detective: +1 pt for identifying the Imposter!</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -166,7 +174,7 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
 
           {verdict?.isTie ? (
             <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 mb-3.5">
-              ⚖️ The vote ended in a tie! No one was ejected, allowing the Doopu to slip away.
+              ⚖️ The vote ended in a tie! No one was ejected, allowing the Doupu to slip away.
             </div>
           ) : (
             <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 mb-3.5 flex items-center justify-between">
@@ -188,27 +196,83 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
             </div>
           )}
 
+          {/* Sharp Detective Bonus: awarded even though imposter was not caught */}
+          {verdict?.correctVoters && verdict.correctVoters.length > 0 && !isCrewWinner && (
+            <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs mb-3.5">
+              <div className="flex items-center gap-1.5 text-cyan-300 font-bold mb-1">
+                <Target className="w-4 h-4 text-cyan-400" />
+                <span>Sharp Detective Award (+1 pt)</span>
+              </div>
+              <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">
+                Even though the Imposter was not caught by majority votes, these operatives correctly deduced and voted for the Imposter:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {verdict.correctVoters.map((cv) => (
+                  <span
+                    key={cv.id}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/20 text-white border border-cyan-500/40 text-xs font-bold"
+                  >
+                    <span>🎯 {cv.name}</span>
+                    <span className="font-mono text-amber-300 text-[11px]">+{cv.bonusPoints} pt</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Vote counts breakdown - scrollable for up to 25 players */}
-          <div className="space-y-1.5 text-xs max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-2 text-xs max-h-56 overflow-y-auto pr-1">
             <span className="text-slate-400 font-semibold block text-[11px] mb-1">Vote Distribution:</span>
             {gameState.players.map((p) => {
               const votesReceived = verdict?.voteCounts[p.id] || 0;
+              const isThisAnImposter = verdict?.imposters.some((imp) => imp.id === p.id);
+              const votersForThisPlayer = gameState.players.filter((v) => gameState.votes[v.id] === p.id);
+
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-950/50 border border-slate-800/80"
+                  className={`p-2.5 rounded-xl border transition-all ${
+                    isThisAnImposter
+                      ? 'bg-rose-950/30 border-rose-500/30'
+                      : 'bg-slate-950/50 border-slate-800/80'
+                  }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <AnimatedAvatar
-                      avatar={p.avatar}
-                      color={p.color}
-                      size="xs"
-                    />
-                    <span className="font-medium text-xs text-white truncate max-w-[130px]">{p.name}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AnimatedAvatar
+                        avatar={p.avatar}
+                        color={p.color}
+                        size="xs"
+                      />
+                      <span className="font-medium text-xs text-white truncate max-w-[130px]">{p.name}</span>
+                      {isThisAnImposter && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold uppercase">
+                          Imposter
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-mono font-bold text-xs text-amber-300 shrink-0">
+                      {votesReceived} vote{votesReceived === 1 ? '' : 's'}
+                    </span>
                   </div>
-                  <span className="font-mono font-bold text-xs text-amber-300 shrink-0">
-                    {votesReceived} vote{votesReceived === 1 ? '' : 's'}
-                  </span>
+
+                  {votersForThisPlayer.length > 0 && (
+                    <div className="mt-1.5 pt-1.5 border-t border-slate-800/60 flex items-center gap-1.5 flex-wrap text-[10px]">
+                      <span className="text-slate-500 font-medium">Voted by:</span>
+                      {votersForThisPlayer.map((v) => (
+                        <span
+                          key={v.id}
+                          className={`px-1.5 py-0.5 rounded font-medium ${
+                            isThisAnImposter
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold'
+                              : 'bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          {v.name} {isThisAnImposter && !isCrewWinner && '(+1 pt)'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -224,7 +288,7 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
             </h3>
 
             {/* Scrollable for up to 25 players */}
-            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
               {sortedPlayers.map((player, idx) => (
                 <div
                   key={player.id}
@@ -244,9 +308,16 @@ export const VerdictView: React.FC<VerdictViewProps> = ({
                     <span className="font-bold text-xs text-white truncate max-w-[130px]">{player.name}</span>
                   </div>
 
-                  <span className="font-mono font-bold text-xs sm:text-sm text-amber-300 shrink-0">
-                    {player.score} pts
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {verdict?.scoreDeltas && verdict.scoreDeltas[player.id] !== undefined && verdict.scoreDeltas[player.id] > 0 && (
+                      <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        +{verdict.scoreDeltas[player.id]}
+                      </span>
+                    )}
+                    <span className="font-mono font-bold text-xs sm:text-sm text-amber-300 shrink-0">
+                      {player.score} pts
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

@@ -84,21 +84,20 @@ export const HostOrderView: React.FC<HostOrderViewProps> = ({
   const playerMap = new Map<string, Player>(gameState.players.map((p) => [p.id, p]));
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
-      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl backdrop-blur-sm">
+    <div className="w-full max-w-2xl mx-auto px-3 sm:px-4 py-6 sm:py-8 animate-fade-in">
+      <div className="bg-[#0b0e17]/95 border border-cyan-500/25 rounded-3xl p-5 sm:p-8 shadow-2xl backdrop-blur-xl">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <ListOrdered className="w-4 h-4" />
-            <span>Turn Order Setup</span>
-          </div>
+          <span className="text-[10px] font-mono tracking-widest uppercase text-cyan-400 font-bold block mb-1">
+            TURN ORDER PLANNING
+          </span>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {isHost ? 'Set Clue Giving Order' : 'Waiting for Host'}
+            {isHost ? 'Sequence Operative Turns' : 'Host Arranging Sequence'}
           </h2>
           <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-md mx-auto">
             {isHost
-              ? 'Arrange the sequence in which players will give their clues one at a time.'
-              : 'The room host is deciding the player sequence for this round of clues.'}
+              ? 'Arrange the sequence in which operatives give their clues one by one.'
+              : 'The host is deciding the player interrogation sequence for this round.'}
           </p>
         </div>
 

@@ -196,10 +196,12 @@ export function handleClueSubmission(
   if (!player) return state;
 
   const newClue: ClueEntry = {
+    id: `clue-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     playerId,
     playerName: player.name,
     playerColor: player.color,
     clue: clueText.trim(),
+    text: clueText.trim(),
     clueRound: state.clueRoundNumber,
     timestamp: Date.now(),
   };
@@ -251,10 +253,24 @@ export function handlePassTurn(state: InternalRoomState): InternalRoomState {
   const currentPlayer = state.players.find(p => p.id === state.currentTurnPlayerId);
   const nextIndex = state.currentTurnIndex + 1;
 
+  const passClue: ClueEntry = {
+    id: `pass-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    playerId: state.currentTurnPlayerId,
+    playerName: currentPlayer?.name || 'Player',
+    playerColor: currentPlayer?.color || '#cbd5e1',
+    clue: '[Passed]',
+    text: '[Passed]',
+    clueRound: state.clueRoundNumber,
+    timestamp: Date.now(),
+  };
+
+  const newClues = [...state.clues, passClue];
+
   if (nextIndex < state.turnOrder.length) {
     const nextPlayerId = state.turnOrder[nextIndex];
     return {
       ...state,
+      clues: newClues,
       currentTurnIndex: nextIndex,
       currentTurnPlayerId: nextPlayerId,
       chatMessages: [
@@ -274,6 +290,7 @@ export function handlePassTurn(state: InternalRoomState): InternalRoomState {
     // Round complete
     return {
       ...state,
+      clues: newClues,
       phase: 'round_prompt',
       currentTurnIndex: 0,
       currentTurnPlayerId: null,
@@ -495,6 +512,10 @@ export function calculateVerdict(state: InternalRoomState): InternalRoomState {
   // Regular verdict outcome
   const winner: 'crew' | 'imposter' = wasImposter ? 'crew' : 'imposter';
 
+  // Identify players who correctly deduced and voted for the imposter
+  const correctVoters: { id: string; name: string; bonusPoints: number }[] = [];
+  const scoreDeltas: Record<string, number> = {};
+
   const updatedPlayers = state.players.map(p => {
     let scoreDelta = 0;
     const isThisImposter = state.imposterIds.includes(p.id);
@@ -503,7 +524,21 @@ export function calculateVerdict(state: InternalRoomState): InternalRoomState {
       scoreDelta = 2;
     } else if (winner === 'imposter' && isThisImposter) {
       scoreDelta = 3;
+    } else if (winner === 'imposter' && !isThisImposter) {
+      // Imposter was not caught (not majority or tied/innocent ejected)
+      // Award points to operatives who correctly voted for the imposter
+      const targetPlayerId = state.votes[p.id];
+      if (targetPlayerId && state.imposterIds.includes(targetPlayerId)) {
+        scoreDelta = 1; // Correct deduction reward even without majority
+        correctVoters.push({
+          id: p.id,
+          name: p.name,
+          bonusPoints: 1,
+        });
+      }
     }
+
+    scoreDeltas[p.id] = scoreDelta;
 
     return {
       ...p,
@@ -520,7 +555,11 @@ export function calculateVerdict(state: InternalRoomState): InternalRoomState {
     imposters,
     secretWord: state.secretWord,
     winner,
+    correctVoters,
+    scoreDeltas,
   };
+
+  const correctVoterNames = correctVoters.map(v => v.name);
 
   return {
     ...state,
@@ -537,7 +576,9 @@ export function calculateVerdict(state: InternalRoomState): InternalRoomState {
         senderColor: winner === 'crew' ? '#10b981' : '#ef4444',
         text: winner === 'crew'
           ? `Crew wins! The imposter was caught. Secret word was "${state.secretWord}".`
-          : `Imposter wins! They fooled the crew. Secret word was "${state.secretWord}".`,
+          : correctVoterNames.length > 0
+            ? `Imposter wins! They escaped undetected. Secret word: "${state.secretWord}". Detective points (+1 pt) awarded to ${correctVoterNames.join(', ')} for voting for the imposter!`
+            : `Imposter wins! They fooled the crew. Secret word was "${state.secretWord}".`,
         isSystem: true,
         timestamp: Date.now(),
       },
@@ -565,6 +606,9 @@ export function handleImposterGuess(
 
   const winner: 'crew' | 'imposter' = isCorrect ? 'imposter' : 'crew';
 
+  const correctVoters: { id: string; name: string; bonusPoints: number }[] = [];
+  const scoreDeltas: Record<string, number> = {};
+
   const updatedPlayers = state.players.map(p => {
     let scoreDelta = 0;
     const isThisImposter = state.imposterIds.includes(p.id);
@@ -573,7 +617,20 @@ export function handleImposterGuess(
       scoreDelta = 2;
     } else if (winner === 'imposter' && isThisImposter) {
       scoreDelta = 4;
+    } else if (winner === 'imposter' && !isThisImposter) {
+      // Imposter stole the win with secret word guess, but award points to operatives who identified them
+      const targetPlayerId = state.votes[p.id];
+      if (targetPlayerId && state.imposterIds.includes(targetPlayerId)) {
+        scoreDelta = 1;
+        correctVoters.push({
+          id: p.id,
+          name: p.name,
+          bonusPoints: 1,
+        });
+      }
     }
+
+    scoreDeltas[p.id] = scoreDelta;
 
     return {
       ...p,
@@ -586,7 +643,11 @@ export function handleImposterGuess(
     imposterGuess: guessedWord,
     imposterGuessSuccess: isCorrect,
     winner,
+    correctVoters,
+    scoreDeltas,
   };
+
+  const correctVoterNames = correctVoters.map(v => v.name);
 
   return {
     ...state,
@@ -602,7 +663,7 @@ export function handleImposterGuess(
         senderName: 'Game Master',
         senderColor: isCorrect ? '#ef4444' : '#10b981',
         text: isCorrect
-          ? `UNBELIEVABLE! The Imposter correctly guessed "${state.secretWord}" and stole the victory!`
+          ? `UNBELIEVABLE! The Imposter correctly guessed "${state.secretWord}" and stole the victory! Detective points (+1 pt) awarded to ${correctVoterNames.join(', ')} for identifying the imposter!`
           : `The Imposter guessed "${guessedWord}" incorrectly! The secret word was "${state.secretWord}". Crew wins!`,
         isSystem: true,
         timestamp: Date.now(),

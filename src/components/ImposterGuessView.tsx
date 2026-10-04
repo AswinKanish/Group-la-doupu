@@ -37,17 +37,17 @@ export const ImposterGuessView: React.FC<ImposterGuessViewProps> = ({
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold mb-3 animate-pulse">
           <AlertTriangle className="w-4 h-4 text-rose-400" />
-          <span>DOOPU REDEMPTION GUESS</span>
+          <span>DOUPU REDEMPTION GUESS</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
           {isMeCaught
             ? 'You Were Caught! Guess the Secret Word to Win!'
-            : `${caughtPlayer?.name || 'The Doopu'} is making their final guess...`}
+            : `${caughtPlayer?.name || 'The Doupu'} is making their final guess...`}
         </h2>
         <p className="text-slate-400 text-xs sm:text-sm max-w-lg mx-auto mt-1.5">
           {isMeCaught
             ? 'You have one chance to guess the secret Tamil Nadu word (famous personality, place, food, song or movie). If correct, you steal the win from the Crew!'
-            : 'The crew identified the Doopu! If they cannot guess the secret word, the Crew wins!'}
+            : 'The crew identified the Doupu! If they cannot guess the secret word, the Crew wins!'}
         </p>
       </div>
 

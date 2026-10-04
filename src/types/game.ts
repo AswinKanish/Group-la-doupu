@@ -25,10 +25,12 @@ export interface GameSettings {
 }
 
 export interface ClueEntry {
+  id?: string;
   playerId: string;
   playerName: string;
   playerColor: string;
   clue: string;
+  text?: string; // Compatibility alias
   clueRound: number;
   timestamp: number;
 }
@@ -43,6 +45,12 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface CorrectVoterInfo {
+  id: string;
+  name: string;
+  bonusPoints: number;
+}
+
 export interface VerdictDetails {
   ejectedPlayerId: string | null;
   ejectedPlayerName: string | null;
@@ -54,6 +62,8 @@ export interface VerdictDetails {
   imposterGuess?: string;
   imposterGuessSuccess?: boolean;
   winner: 'crew' | 'imposter';
+  correctVoters?: CorrectVoterInfo[]; // players who voted for imposter even if imposter wasn't caught
+  scoreDeltas?: Record<string, number>; // points awarded in this round per player
 }
 
 export interface GameState {

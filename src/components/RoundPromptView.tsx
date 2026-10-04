@@ -50,7 +50,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
             Continue Clues or Vote?
           </h2>
           <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-md mx-auto">
-            All players completed their turn. Decide as a group: give another round of clues or vote out the Doopu (Imposter)!
+            All players completed their turn. Decide as a group: give another round of clues or vote out the Doupu (Imposter)!
           </p>
         </div>
 
@@ -61,13 +61,14 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
             <span>Clues Review ({gameState.clues.length} clues)</span>
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
-            {gameState.clues.map((clue) => {
+            {gameState.clues.map((clue, idx) => {
               const player = gameState.players.find((p) => p.id === clue.playerId);
-              const isPassed = clue.text === '[Passed]';
+              const clueValue = clue.clue || clue.text || '';
+              const isPassed = clueValue === '[Passed]';
 
               return (
                 <div
-                  key={clue.id}
+                  key={clue.id || `${clue.playerId}-${idx}`}
                   className="p-2.5 sm:p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center gap-2.5 min-w-0"
                 >
                   {player && (
@@ -87,7 +88,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
                         isPassed ? 'text-slate-500 italic' : 'text-amber-300'
                       }`}
                     >
-                      &ldquo;{clue.text}&rdquo;
+                      &ldquo;{clueValue}&rdquo;
                     </span>
                   </div>
                 </div>
@@ -148,7 +149,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
               </div>
               <h3 className="font-bold text-sm sm:text-base text-white mb-1">Proceed to Vote</h3>
               <p className="text-[11px] sm:text-xs text-slate-400">
-                Enough clues! Everyone casts a vote on who is the Doopu (Imposter).
+                Enough clues! Everyone casts a vote on who is the Doupu (Imposter).
               </p>
             </div>
 

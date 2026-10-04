@@ -34,6 +34,17 @@ export const AnimatedAvatar: React.FC<AnimatedAvatarProps> = ({
 
   const renderSvg = (id: string, themeColor: string) => {
     switch (id) {
+      case 'imposter-prime':
+        return (
+          <div className="w-full h-full relative rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-purple-600 via-indigo-500 to-cyan-400">
+            <img
+              src="/imposter-icon.png"
+              alt="Imposter"
+              className="w-full h-full object-cover rounded-full"
+            />
+          </div>
+        );
+
       case 'cyber-neon':
         return (
           <svg viewBox="0 0 100 100" className="w-full h-full">

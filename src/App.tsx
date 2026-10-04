@@ -3,6 +3,8 @@ import { GameState, NetworkMode, GameSettings } from './types/game';
 import { multiplayer } from './network/multiplayer';
 import { Header } from './components/Header';
 import { HomeView } from './components/HomeView';
+import { HostScreen } from './components/HostScreen';
+import { JoinScreen } from './components/JoinScreen';
 import { LobbyView } from './components/LobbyView';
 import { HostOrderView } from './components/HostOrderView';
 import { RoleRevealView } from './components/RoleRevealView';
@@ -13,8 +15,10 @@ import { ImposterGuessView } from './components/ImposterGuessView';
 import { VerdictView } from './components/VerdictView';
 import { ThreeBackground } from './components/ThreeBackground';
 import { RulesModal } from './components/RulesModal';
-import { DeployGuideModal } from './components/DeployGuideModal';
-import { CloudDatabaseModal } from './components/CloudDatabaseModal';
+import { ProfileModal } from './components/ProfileModal';
+import { ANIMATED_CHARACTERS, normalizeCharacterId } from './data/characters';
+import { PLAYER_COLORS } from './data/words';
+import { sound } from './utils/sound';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -22,16 +26,33 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
-  const [isDeployGuideOpen, setIsDeployGuideOpen] = useState(false);
-  const [isCloudDbOpen, setIsCloudDbOpen] = useState(false);
-  const [initialRoomCode, setInitialRoomCode] = useState('');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Screen routing for pre-game state
+  const [viewMode, setViewMode] = useState<'home' | 'host' | 'join'>('home');
+  const [prefilledRoomCode, setPrefilledRoomCode] = useState('');
+
+  // Persistent Player Profile
+  const [playerName, setPlayerName] = useState(() => {
+    return localStorage.getItem('imposter_player_name') || `Operative ${Math.floor(Math.random() * 90 + 10)}`;
+  });
+
+  const [playerAvatar, setPlayerAvatar] = useState(() => {
+    const saved = localStorage.getItem('imposter_player_avatar');
+    return saved ? normalizeCharacterId(saved) : 'imposter-prime';
+  });
+
+  const [playerColor, setPlayerColor] = useState(() => {
+    return localStorage.getItem('imposter_player_color') || PLAYER_COLORS[0];
+  });
 
   // Check URL params for invite link (?room=CODE)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roomParam = params.get('room');
     if (roomParam) {
-      setInitialRoomCode(roomParam.toUpperCase());
+      setPrefilledRoomCode(roomParam.toUpperCase());
+      setViewMode('join');
     }
   }, []);
 
@@ -57,41 +78,65 @@ export default function App() {
     };
   }, []);
 
-  // Host a game
-  const handleHostGame = useCallback(
+  // Save profile helpers
+  const saveProfile = useCallback((profile: { name: string; avatar: string; color: string }) => {
+    setPlayerName(profile.name);
+    setPlayerAvatar(profile.avatar);
+    setPlayerColor(profile.color);
+    try {
+      localStorage.setItem('imposter_player_name', profile.name);
+      localStorage.setItem('imposter_player_avatar', profile.avatar);
+      localStorage.setItem('imposter_player_color', profile.color);
+    } catch {}
+  }, []);
+
+  const randomizeProfile = useCallback(() => {
+    sound.playClick();
+    const randomChar = ANIMATED_CHARACTERS[Math.floor(Math.random() * ANIMATED_CHARACTERS.length)].id;
+    const randomCol = PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
+    const randomNum = Math.floor(Math.random() * 90 + 10);
+    saveProfile({
+      name: `Agent ${randomNum}`,
+      avatar: randomChar,
+      color: randomCol,
+    });
+  }, [saveProfile]);
+
+  // Host a game from HostScreen
+  const handleLaunchHostLobby = useCallback(
     async (
       profile: { name: string; avatar: string; color: string },
-      mode: NetworkMode
+      settings: { imposterCount: number; allowImposterGuess: boolean }
     ) => {
       setErrorMessage(null);
+      saveProfile(profile);
       try {
-        setNetworkMode(mode);
-        await multiplayer.hostGame(profile, mode);
+        await multiplayer.hostGame(profile, networkMode);
+        multiplayer.dispatch('UPDATE_SETTINGS', { settings });
       } catch (err: any) {
         console.error('Host error:', err);
-        setErrorMessage(err.message || 'Failed to host game');
+        setErrorMessage(err.message || 'Failed to create game room');
       }
     },
-    []
+    [networkMode, saveProfile]
   );
 
-  // Join an existing game
-  const handleJoinGame = useCallback(
+  // Join an existing game from JoinScreen
+  const handleJoinLobby = useCallback(
     async (
-      roomCode: string,
-      profile: { name: string; avatar: string; color: string },
-      mode: NetworkMode
+      code: string,
+      profile: { name: string; avatar: string; color: string }
     ) => {
       setErrorMessage(null);
+      saveProfile(profile);
       try {
-        setNetworkMode(mode);
-        await multiplayer.joinGame(roomCode, profile, mode);
+        await multiplayer.joinGame(code, profile, networkMode);
       } catch (err: any) {
         console.error('Join error:', err);
         setErrorMessage(err.message || 'Failed to join game');
       }
     },
-    []
+    [networkMode, saveProfile]
   );
 
   // Host updates room settings
@@ -104,17 +149,17 @@ export default function App() {
     multiplayer.dispatch('TOGGLE_READY');
   }, []);
 
-  // Host starts game (moves to host_order phase)
+  // Host starts game
   const handleStartGame = useCallback(() => {
     multiplayer.dispatch('START_GAME');
   }, []);
 
-  // Host sets turn order for the round and proceeds to role_reveal
+  // Host confirms turn sequence
   const handleSetTurnOrder = useCallback((orderedPlayerIds: string[]) => {
     multiplayer.dispatch('SET_TURN_ORDER', { orderedPlayerIds });
   }, []);
 
-  // Advance to clue giving after role reveal
+  // Host starts clues after role reveal
   const handleProceedToClues = useCallback(() => {
     multiplayer.dispatch('START_CLUES');
   }, []);
@@ -159,21 +204,20 @@ export default function App() {
     multiplayer.dispatch('RETURN_TO_LOBBY');
   }, []);
 
-  // Leave room
+  // Leave active room completely and return home
   const handleLeaveRoom = useCallback(() => {
-    multiplayer.cleanup();
+    sound.playClick();
+    multiplayer.disconnect();
     setGameState(null);
-    setErrorMessage(null);
-    // Remove query param from URL without page reload
-    window.history.replaceState({}, document.title, window.location.pathname);
+    setViewMode('home');
   }, []);
 
-  // Send chat message
+  // Send tactical chat message
   const handleSendChat = useCallback((text: string) => {
     multiplayer.dispatch('SEND_CHAT', { text });
   }, []);
 
-  // Host kicks player
+  // Host kicks a player
   const handleKickPlayer = useCallback((playerId: string) => {
     multiplayer.dispatch('KICK_PLAYER', { playerId });
   }, []);
@@ -181,36 +225,66 @@ export default function App() {
   const isHost = gameState ? gameState.hostId === multiplayer.myPlayerId : false;
 
   return (
-    <div className="min-h-screen bg-slate-950/80 text-slate-100 flex flex-col font-sans selection:bg-rose-500 selection:text-white relative overflow-x-hidden">
-      {/* Interactive 3D Three.js Universe */}
+    <div className="min-h-screen bg-[#07070a] text-slate-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white relative overflow-x-hidden">
+      {/* Interactive 3D Ambient Space Universe */}
       <ThreeBackground />
 
-      {/* Top Navigation Bar */}
+      {/* Sleek, Compact Top Navigation */}
       <Header
         roomCode={gameState?.roomCode}
         isHost={isHost}
-        networkMode={networkMode}
-        onOpenDeployGuide={() => setIsDeployGuideOpen(true)}
-        onOpenCloudDb={() => setIsCloudDbOpen(true)}
         onOpenRules={() => setIsRulesOpen(true)}
-        connectionStatus={connectionStatus}
+        onLogoClick={() => {
+          if (!gameState) {
+            setViewMode('home');
+          }
+        }}
       />
 
-      {/* Main Game Screen */}
-      <main className="flex-1 flex flex-col justify-center">
+      {/* Main Game Screen Routing */}
+      <main className="flex-1 flex flex-col justify-center relative z-20">
         {!gameState ? (
-          /* Home Screen: Host vs Join */
-          <HomeView
-            onHost={handleHostGame}
-            onJoin={handleJoinGame}
-            networkMode={networkMode}
-            onSelectNetworkMode={setNetworkMode}
-            initialRoomCode={initialRoomCode}
-            isConnecting={connectionStatus === 'connecting'}
-            errorMessage={errorMessage || undefined}
-          />
+          /* PRE-GAME SCREENS */
+          <>
+            {viewMode === 'home' && (
+              <HomeView
+                onStartHostFlow={() => setViewMode('host')}
+                onStartJoinFlow={() => setViewMode('join')}
+                playerName={playerName}
+                playerAvatar={playerAvatar}
+                playerColor={playerColor}
+                onRandomizeProfile={randomizeProfile}
+                onOpenProfileModal={() => setIsProfileModalOpen(true)}
+                errorMessage={errorMessage || undefined}
+              />
+            )}
+
+            {viewMode === 'host' && (
+              <HostScreen
+                onBack={() => setViewMode('home')}
+                onLaunchLobby={handleLaunchHostLobby}
+                initialName={playerName}
+                initialAvatar={playerAvatar}
+                initialColor={playerColor}
+                isConnecting={connectionStatus === 'connecting'}
+              />
+            )}
+
+            {viewMode === 'join' && (
+              <JoinScreen
+                onBack={() => setViewMode('home')}
+                onJoinLobby={handleJoinLobby}
+                initialCode={prefilledRoomCode}
+                initialName={playerName}
+                initialAvatar={playerAvatar}
+                initialColor={playerColor}
+                isConnecting={connectionStatus === 'connecting'}
+                errorMessage={errorMessage || undefined}
+              />
+            )}
+          </>
         ) : (
-          /* Active Room Stages */
+          /* ACTIVE IN-ROOM STAGES */
           <>
             {gameState.phase === 'lobby' && (
               <LobbyView
@@ -296,16 +370,14 @@ export default function App() {
       {/* Rules Modal */}
       <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
-      {/* Deploy to Vercel & Netlify Modal */}
-      <DeployGuideModal
-        isOpen={isDeployGuideOpen}
-        onClose={() => setIsDeployGuideOpen(false)}
-      />
-
-      {/* Cloud Database (Supabase & Firebase) Modal */}
-      <CloudDatabaseModal
-        isOpen={isCloudDbOpen}
-        onClose={() => setIsCloudDbOpen(false)}
+      {/* Operative Profile Customizer Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        name={playerName}
+        avatar={playerAvatar}
+        color={playerColor}
+        onSave={saveProfile}
       />
     </div>
   );

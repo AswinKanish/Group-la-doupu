@@ -4,6 +4,7 @@ export interface CharacterProfile {
 }
 
 export const ANIMATED_CHARACTERS: CharacterProfile[] = [
+  { id: 'imposter-prime', name: 'Master Imposter' },
   { id: 'cyber-neon', name: 'Agent 1' },
   { id: 'cyber-oni', name: 'Agent 2' },
   { id: 'mecha-skull', name: 'Agent 3' },

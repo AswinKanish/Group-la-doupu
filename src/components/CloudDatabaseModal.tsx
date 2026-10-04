@@ -125,7 +125,7 @@ export const CloudDatabaseModal: React.FC<CloudDatabaseModalProps> = ({
     sound.playClick();
   };
 
-  const sqlSchema = `-- Supabase PostgreSQL Schema for Group la Doopu
+  const sqlSchema = `-- Supabase PostgreSQL Schema for Group la Doupu
 CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY,
   room_code VARCHAR(12) NOT NULL,
@@ -458,7 +458,7 @@ CREATE TABLE IF NOT EXISTS leaderboard (
                       <div className="text-right">
                         <div className="font-bold text-emerald-400">{item.wins} Wins</div>
                         <div className="text-[10px] text-slate-500">
-                          {item.imposterWins} Doopu / {item.detectiveWins} Crew
+                          {item.imposterWins} Doupu / {item.detectiveWins} Crew
                         </div>
                       </div>
                     </div>

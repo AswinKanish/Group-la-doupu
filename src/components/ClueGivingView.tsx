@@ -74,7 +74,7 @@ export const ClueGivingView: React.FC<ClueGivingViewProps> = ({
           {isImposter ? (
             <div className="px-3.5 py-1.5 rounded-xl bg-rose-950/70 border border-rose-600/50 text-rose-300 text-xs font-bold flex items-center gap-2">
               <UserX className="w-4 h-4 text-rose-400" />
-              <span>You are the Doopu</span>
+              <span>You are the Doupu</span>
             </div>
           ) : (
             <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center gap-2">
@@ -169,7 +169,7 @@ export const ClueGivingView: React.FC<ClueGivingViewProps> = ({
                       {hasGivenClue ? (
                         <div className="flex items-center gap-1 text-[11px] sm:text-xs text-amber-300 font-semibold bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800 max-w-[130px] sm:max-w-[170px] truncate">
                           <UserCheck className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span className="truncate">&ldquo;{playerClue?.text}&rdquo;</span>
+                          <span className="truncate">&ldquo;{playerClue?.clue || playerClue?.text || ''}&rdquo;</span>
                         </div>
                       ) : isCurrent ? (
                         <span className="text-[11px] font-bold text-rose-400 animate-pulse bg-rose-950/60 px-2 py-0.5 rounded-lg border border-rose-800">
@@ -273,7 +273,8 @@ export const ClueGivingView: React.FC<ClueGivingViewProps> = ({
               <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-[360px]">
                 {gameState.clues.map((entry, idx) => {
                   const player = gameState.players.find((p) => p.id === entry.playerId);
-                  const isPassed = entry.text === '[Passed]';
+                  const clueValue = entry.clue || entry.text || '';
+                  const isPassed = clueValue === '[Passed]';
 
                   return (
                     <div
@@ -300,7 +301,7 @@ export const ClueGivingView: React.FC<ClueGivingViewProps> = ({
                             isPassed ? 'text-slate-500 italic' : 'text-amber-300'
                           }`}
                         >
-                          &ldquo;{entry.text}&rdquo;
+                          &ldquo;{clueValue}&rdquo;
                         </span>
                       </div>
                     </div>
