@@ -32,6 +32,8 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
     if (c === 'vote') voteCount++;
   });
 
+  const majorityNeeded = Math.floor(totalPlayers / 2) + 1;
+
   const handleChoice = (choice: 'continue' | 'vote') => {
     sound.playClick();
     onChooseContinueOrVote(choice);
@@ -50,7 +52,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
             Continue Clues or Vote?
           </h2>
           <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-md mx-auto">
-            All players completed their turn. Decide as a group: give another round of clues or vote out the Doupu (Imposter)!
+            Cast your vote for more clues or suspect voting. <strong className="text-cyan-400 font-semibold">Majority wins!</strong> ({majorityNeeded} of {totalPlayers} votes needed)
           </p>
         </div>
 
@@ -122,7 +124,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
 
             <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
               <span className="text-xs font-bold text-rose-400">
-                {continueCount} / {totalPlayers} voted
+                {continueCount} / {majorityNeeded} for majority
               </span>
               {myChoice === 'continue' && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
@@ -155,7 +157,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
 
             <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
               <span className="text-xs font-bold text-indigo-400">
-                {voteCount} / {totalPlayers} voted
+                {voteCount} / {majorityNeeded} for majority
               </span>
               {myChoice === 'vote' && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
@@ -184,7 +186,7 @@ export const RoundPromptView: React.FC<RoundPromptViewProps> = ({
           </div>
         ) : (
           <p className="text-center text-xs text-slate-400">
-            When majority votes or host decides, the game will advance automatically.
+            A majority of {majorityNeeded} votes is required to advance.
           </p>
         )}
       </div>

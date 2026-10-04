@@ -47,7 +47,7 @@ function broadcastRoomState(roomCode: string) {
 }
 
 function handleGameAction(action: GameAction, ws: WebSocket) {
-  const roomCode = action.roomCode?.toUpperCase();
+  const roomCode = action.roomCode?.trim().toUpperCase();
   if (!roomCode) return;
 
   switch (action.type) {
@@ -320,8 +320,9 @@ async function startServer() {
           return;
         }
 
-        if (parsed.action) {
-          handleGameAction(parsed.action, ws);
+        const action = (parsed.action || parsed) as GameAction;
+        if (action && action.type) {
+          handleGameAction(action, ws);
         }
       } catch (err) {
         console.error('WebSocket message parsing error:', err);

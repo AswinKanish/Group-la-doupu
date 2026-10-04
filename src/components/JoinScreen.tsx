@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, KeyRound, Shuffle, Check } from 'lucide-react';
+import { ArrowLeft, KeyRound, Shuffle, Check, RefreshCw } from 'lucide-react';
 import { ANIMATED_CHARACTERS } from '../data/characters';
 import { PLAYER_COLORS } from '../data/words';
 import { AnimatedAvatar } from './AnimatedAvatar';
@@ -30,7 +30,8 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   errorMessage,
 }) => {
   const [digits, setDigits] = useState<string[]>(() => {
-    const padded = (initialCode || '').toUpperCase().slice(0, 6).padEnd(6, ' ');
+    const clean = (initialCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+    const padded = clean.padEnd(4, ' ');
     return padded.split('').map((char) => (char === ' ' ? '' : char));
   });
 
@@ -41,10 +42,19 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Update digits if initialCode changes
+  useEffect(() => {
+    if (initialCode) {
+      const clean = initialCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+      const padded = clean.padEnd(4, ' ');
+      setDigits(padded.split('').map((char) => (char === ' ' ? '' : char)));
+    }
+  }, [initialCode]);
+
   // Focus first empty digit box or last box on mount
   useEffect(() => {
     const firstEmpty = digits.findIndex((d) => !d);
-    const targetIdx = firstEmpty === -1 ? 5 : firstEmpty;
+    const targetIdx = firstEmpty === -1 ? 3 : firstEmpty;
     if (inputRefs.current[targetIdx]) {
       inputRefs.current[targetIdx]?.focus();
     }
@@ -64,12 +74,12 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     // Handle pasting multi-character code
     if (clean.length > 1) {
       const next = [...digits];
-      for (let i = 0; i < clean.length && index + i < 6; i++) {
+      for (let i = 0; i < clean.length && index + i < 4; i++) {
         next[index + i] = clean[i];
       }
       setDigits(next);
       sound.playClick();
-      const nextFocus = Math.min(5, index + clean.length);
+      const nextFocus = Math.min(3, index + clean.length);
       inputRefs.current[nextFocus]?.focus();
       return;
     }
@@ -80,7 +90,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     sound.playClick();
 
     // Auto-advance
-    if (index < 5) {
+    if (index < 3 && clean) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -103,7 +113,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (fullCode.length < 4 || !name.trim() || isConnecting) return;
+    if (fullCode.length !== 4 || !name.trim() || isConnecting) return;
     sound.playClick();
     onJoinLobby(fullCode, { name: name.trim(), avatar, color });
   };
@@ -150,28 +160,31 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             Enter Game Code
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Type the 6-character room code from your host
+            Type the 4-character room code from your host
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 6 Satisfying Digit Boxes [ _ _ _ _ _ _ ] */}
-          <div className="flex justify-center gap-2 sm:gap-3">
-            {[0, 1, 2, 3, 4, 5].map((index) => {
+          {/* 4 Satisfying Digit Boxes [ _ _ _ _ ] */}
+          <div className="flex justify-center gap-2.5 sm:gap-4">
+            {[0, 1, 2, 3].map((index) => {
               const val = digits[index] || '';
               return (
                 <input
                   key={index}
                   ref={(el) => { inputRefs.current[index] = el; }}
                   type="text"
-                  maxLength={6}
+                  maxLength={4}
                   value={val}
                   onChange={(e) => handleDigitChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  className={`w-11 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-mono font-black rounded-2xl border transition-all uppercase focus:outline-none ${
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className={`w-14 h-16 sm:w-20 sm:h-22 text-center text-2xl sm:text-4xl font-mono font-black rounded-2xl border transition-all uppercase focus:outline-none ${
                     val
-                      ? 'bg-purple-950/40 border-purple-400 text-purple-200 ring-2 ring-purple-500/30 shadow-lg'
-                      : 'bg-black/60 border-slate-700/80 text-white focus:border-purple-400 focus:ring-1 focus:ring-purple-400'
+                      ? 'bg-purple-950/40 border-purple-400 text-purple-200 ring-2 ring-purple-500/30 shadow-lg shadow-purple-950/50'
+                      : 'bg-black/60 border-slate-700/80 text-white focus:border-purple-400 focus:ring-2 focus:ring-purple-400/40'
                   }`}
                 />
               );
@@ -283,10 +296,17 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Dominant Join Action */}
           <button
             type="submit"
-            disabled={fullCode.length < 4 || !name.trim() || isConnecting}
+            disabled={fullCode.length !== 4 || !name.trim() || isConnecting}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-purple-950/60 hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 active:scale-[0.99]"
           >
-            <span>{isConnecting ? 'Authenticating...' : 'Enter Game Lobby'}</span>
+            {isConnecting ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Connecting to Room {fullCode}...</span>
+              </>
+            ) : (
+              <span>Enter Game Lobby</span>
+            )}
           </button>
         </form>
       </div>

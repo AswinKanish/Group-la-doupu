@@ -89,16 +89,27 @@ class MultiplayerClient {
   }
 
   private emitError(err: string) {
+    this.setStatus('disconnected');
     this.errorListeners.forEach(l => l(err));
   }
 
   private emitState(state: GameState) {
+    this.setStatus('connected');
     this.stateListeners.forEach(l => l(state));
+  }
+
+  private generateCleanRoomCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
   }
 
   public async checkServerAvailability(): Promise<boolean> {
     try {
-      const res = await fetch('/api/health', { method: 'GET', signal: AbortSignal.timeout(2500) });
+      const res = await fetch('/api/health', { method: 'GET', signal: AbortSignal.timeout(1500) });
       if (res.ok) {
         const data = await res.json();
         return data.status === 'ok';
@@ -120,7 +131,7 @@ class MultiplayerClient {
     this.isHost = true;
     this.setStatus('connecting');
 
-    const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const roomCode = this.generateCleanRoomCode();
     this.currentRoomCode = roomCode;
 
     const fullPlayer: Player = {
@@ -134,21 +145,16 @@ class MultiplayerClient {
 
     let targetMode = preferredMode || this.mode;
 
-    // Check if WebSocket server is available if websocket is selected
     if (targetMode === 'websocket') {
-      const serverOk = await this.checkServerAvailability();
-      if (!serverOk) {
-        console.warn('Backend server not responding, falling back to WebRTC P2P (Vercel/Netlify mode)');
-        targetMode = 'webrtc_p2p';
+      try {
+        return await this.hostViaWebSocket(roomCode, fullPlayer);
+      } catch (wsErr) {
+        console.warn('WebSocket host failed, falling back to P2P:', wsErr);
+        this.mode = 'webrtc_p2p';
+        return await this.hostViaP2P(roomCode, fullPlayer);
       }
-    }
-
-    this.mode = targetMode;
-
-    if (targetMode === 'websocket') {
-      return this.hostViaWebSocket(roomCode, fullPlayer);
     } else {
-      return this.hostViaP2P(roomCode, fullPlayer);
+      return await this.hostViaP2P(roomCode, fullPlayer);
     }
   }
 
@@ -164,7 +170,7 @@ class MultiplayerClient {
     this.isHost = false;
     this.setStatus('connecting');
 
-    const cleanCode = roomCode.trim().toUpperCase();
+    const cleanCode = roomCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
     this.currentRoomCode = cleanCode;
 
     const fullPlayer: Player = {
@@ -179,18 +185,15 @@ class MultiplayerClient {
     let targetMode = preferredMode || this.mode;
 
     if (targetMode === 'websocket') {
-      const serverOk = await this.checkServerAvailability();
-      if (!serverOk) {
-        targetMode = 'webrtc_p2p';
+      try {
+        await this.joinViaWebSocket(cleanCode, fullPlayer);
+      } catch (wsErr) {
+        console.warn('WebSocket join failed, falling back to P2P:', wsErr);
+        this.mode = 'webrtc_p2p';
+        await this.joinViaP2P(cleanCode, fullPlayer);
       }
-    }
-
-    this.mode = targetMode;
-
-    if (targetMode === 'websocket') {
-      return this.joinViaWebSocket(cleanCode, fullPlayer);
     } else {
-      return this.joinViaP2P(cleanCode, fullPlayer);
+      await this.joinViaP2P(cleanCode, fullPlayer);
     }
   }
 
@@ -201,6 +204,15 @@ class MultiplayerClient {
     return new Promise((resolve, reject) => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+      let hasEnded = false;
+      const timer = setTimeout(() => {
+        if (!hasEnded) {
+          hasEnded = true;
+          try { this.ws?.close(); } catch {}
+          reject(new Error('Connection timed out'));
+        }
+      }, 4000);
 
       try {
         this.ws = new WebSocket(wsUrl);
@@ -213,7 +225,11 @@ class MultiplayerClient {
             senderId: this.myPlayerId,
             payload: { player },
           });
-          resolve(roomCode);
+          if (!hasEnded) {
+            hasEnded = true;
+            clearTimeout(timer);
+            resolve(roomCode);
+          }
         };
 
         this.ws.onmessage = (event) => {
@@ -222,16 +238,22 @@ class MultiplayerClient {
 
         this.ws.onerror = (err) => {
           console.error('WebSocket error:', err);
-          this.setStatus('disconnected');
-          this.emitError('WebSocket connection error. Switching to P2P mode...');
-          reject(new Error('WebSocket connection failed'));
+          if (!hasEnded) {
+            hasEnded = true;
+            clearTimeout(timer);
+            reject(err);
+          }
         };
 
         this.ws.onclose = () => {
           this.setStatus('disconnected');
         };
       } catch (e: any) {
-        reject(e);
+        if (!hasEnded) {
+          hasEnded = true;
+          clearTimeout(timer);
+          reject(e);
+        }
       }
     });
   }
@@ -240,6 +262,15 @@ class MultiplayerClient {
     return new Promise((resolve, reject) => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+      let hasEnded = false;
+      const timer = setTimeout(() => {
+        if (!hasEnded) {
+          hasEnded = true;
+          try { this.ws?.close(); } catch {}
+          reject(new Error('Connection timed out'));
+        }
+      }, 4000);
 
       try {
         this.ws = new WebSocket(wsUrl);
@@ -252,7 +283,11 @@ class MultiplayerClient {
             senderId: this.myPlayerId,
             payload: { player },
           });
-          resolve();
+          if (!hasEnded) {
+            hasEnded = true;
+            clearTimeout(timer);
+            resolve();
+          }
         };
 
         this.ws.onmessage = (event) => {
@@ -261,16 +296,22 @@ class MultiplayerClient {
 
         this.ws.onerror = (err) => {
           console.error('WebSocket join error:', err);
-          this.setStatus('disconnected');
-          this.emitError('Failed to connect to room via server');
-          reject(err);
+          if (!hasEnded) {
+            hasEnded = true;
+            clearTimeout(timer);
+            reject(err);
+          }
         };
 
         this.ws.onclose = () => {
           this.setStatus('disconnected');
         };
       } catch (e: any) {
-        reject(e);
+        if (!hasEnded) {
+          hasEnded = true;
+          clearTimeout(timer);
+          reject(e);
+        }
       }
     });
   }

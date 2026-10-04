@@ -311,44 +311,62 @@ export function handleContinueOrVote(
 ): InternalRoomState {
   if (state.phase !== 'round_prompt') return state;
 
-  const isHost = state.hostId === playerId;
   const newContinueVotes = {
     ...state.continueVotes,
     [playerId]: choice,
   };
 
-  // If host explicitly made the decision, or if unanimous/majority:
-  if (isHost || choice === 'vote') {
-    if (choice === 'vote') {
-      return proceedToVoting({
-        ...state,
-        continueVotes: newContinueVotes,
-      });
-    } else {
-      // Host chose to continue giving clues!
-      return startNextClueRound({
-        ...state,
-        continueVotes: newContinueVotes,
-      });
-    }
-  }
-
-  // Count votes from players
+  // Count votes from active players
   const activePlayers = state.players.filter(p => p.connected);
+  const totalActive = activePlayers.length;
   const votesList = Object.values(newContinueVotes);
   const voteToProceedCount = votesList.filter(v => v === 'vote').length;
   const continueCount = votesList.filter(v => v === 'continue').length;
 
-  if (voteToProceedCount > activePlayers.length / 2) {
+  // Strict majority needed (more than half of connected players)
+  const majorityThreshold = Math.floor(totalActive / 2) + 1;
+
+  if (voteToProceedCount >= majorityThreshold) {
     return proceedToVoting({
       ...state,
       continueVotes: newContinueVotes,
     });
-  } else if (continueCount >= activePlayers.length) {
+  }
+
+  if (continueCount >= majorityThreshold) {
     return startNextClueRound({
       ...state,
       continueVotes: newContinueVotes,
     });
+  }
+
+  // If every single active player has voted:
+  if (votesList.length >= totalActive) {
+    if (voteToProceedCount > continueCount) {
+      return proceedToVoting({
+        ...state,
+        continueVotes: newContinueVotes,
+      });
+    } else if (continueCount > voteToProceedCount) {
+      return startNextClueRound({
+        ...state,
+        continueVotes: newContinueVotes,
+      });
+    } else {
+      // Tie breaker: Host's choice breaks the tie
+      const hostChoice = newContinueVotes[state.hostId];
+      if (hostChoice === 'continue') {
+        return startNextClueRound({
+          ...state,
+          continueVotes: newContinueVotes,
+        });
+      } else {
+        return proceedToVoting({
+          ...state,
+          continueVotes: newContinueVotes,
+        });
+      }
+    }
   }
 
   return {
